@@ -204,4 +204,31 @@ mod test {
         interp.eval("x = {'a': 1, 'b': 2}").unwrap();
         assert_eq!(interp.eval("x.values()").unwrap().to_string(), "[1, 2]");
     }
+
+    #[test]
+    fn test_strings_non_empty_single_quote() {
+        // Test that non-empty single-quoted strings work
+        let mut interp = Interpreter::new();
+        assert_eq!(interp.eval("'a'").unwrap().to_string(), "a");
+        assert_eq!(interp.eval("'hello'").unwrap().to_string(), "hello");
+        assert_eq!(interp.eval("'a' == 'a'").unwrap().to_string(), "1");
+    }
+
+    #[test]
+    fn test_strings_single_quote_empty() {
+        // Test that empty single-quoted strings work (fixed: take_while1 → take_while)
+        let mut interp = Interpreter::new();
+        assert_eq!(interp.eval("''").unwrap().to_string(), "");
+        assert_eq!(interp.eval("'' == ''").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("len('')").unwrap().to_string(), "0");
+    }
+
+    #[test]
+    fn test_strings_empty_comparison() {
+        // Test comparisons between empty strings (common xacro pattern: ${var == ''})
+        let mut interp = Interpreter::new();
+        interp.eval("x = ''").unwrap();
+        assert_eq!(interp.eval("x == ''").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("x != 'foo'").unwrap().to_string(), "1");
+    }
 }
