@@ -730,7 +730,9 @@ fn var_expr(input: &str) -> IResult<&str, Expr> {
 //---------------------------------------------------------
 fn number(input: &str) -> IResult<&str, Expr> {
     let (input, num_str) = recognize_float(input)?;
-    let val: f64 = num_str.parse().unwrap();
+    let val: f64 = num_str
+        .parse()
+        .map_err(|_| nom::Err::Failure(Error::new(input, ErrorKind::Float)))?;
     Ok((input, Expr::Number(val)))
 }
 
