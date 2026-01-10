@@ -729,11 +729,11 @@ fn var_expr(input: &str) -> IResult<&str, Expr> {
 //   ただし unary_expr で + / - を扱うのでここでは非負を想定
 //---------------------------------------------------------
 fn number(input: &str) -> IResult<&str, Expr> {
-    let (input, num_str) = recognize_float(input)?;
+    let (remaining_input, num_str) = recognize_float(input)?;
     let val: f64 = num_str
         .parse()
         .map_err(|_| nom::Err::Failure(Error::new(input, ErrorKind::Float)))?;
-    Ok((input, Expr::Number(val)))
+    Ok((remaining_input, Expr::Number(val)))
 }
 
 //---------------------------------------------------------
@@ -757,8 +757,8 @@ fn string_lit(input: &str) -> IResult<&str, Expr> {
 // - mantissa: digit+ [. digit*]? | . digit+
 // - exponent: [eE] [+-]? digit+
 //---------------------------------------------------------
-fn recognize_float(input: &str) -> IResult<&str, String> {
-    let (input, num_str) = recognize(pair(
+fn recognize_float(input: &str) -> IResult<&str, &str> {
+    recognize(pair(
         // Mantissa: standard (123.456, 123.) or leading dot (.456)
         alt((
             // Standard: 123.456 or 123.
@@ -772,9 +772,7 @@ fn recognize_float(input: &str) -> IResult<&str, String> {
             opt(one_of("+-")),
             digit1,
         ))),
-    ))(input)?;
-
-    Ok((input, num_str.to_string()))
+    ))(input)
 }
 
 //---------------------------------------------------------
