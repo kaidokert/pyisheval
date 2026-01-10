@@ -361,9 +361,11 @@ mod test {
             result.is_err(),
             "Should fail to parse '.e5' (no digit after dot)"
         );
-
-        // This validates that our error reporting doesn't point to nonsensical
-        // locations due to variable shadowing (the bug we're fixing).
-        // The errors should be understandable and point to relevant parts of input.
+        let err_msg = format!("{:?}", result.unwrap_err());
+        assert!(
+            err_msg.contains("Parse error"),
+            "Error message should contain 'Parse error', got: {}",
+            err_msg
+        );
     }
 }
