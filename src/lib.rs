@@ -313,11 +313,11 @@ mod test {
         );
         // Floating point precision: -0.0145 - 0.021 = -0.0355 (with minor precision error)
         let result = interp.eval("-0.0145 - .021").unwrap();
-        if let Value::Number(n) = result {
-            assert!((n - (-0.0355)).abs() < 1e-10, "Expected -0.0355, got {}", n);
-        } else {
-            panic!("Expected Number, got {:?}", result);
-        }
+        let n = match result {
+            Value::Number(n) => n,
+            other => panic!("Expected Number, got {:?}", other),
+        };
+        assert!((n - (-0.0355)).abs() < 1e-10, "Expected -0.0355, got {}", n);
 
         // Scientific notation example
         assert_eq!(
@@ -328,12 +328,12 @@ mod test {
         // Trailing dot example
         // -pi*3/4. = -3.14159*3/4 = -2.3561925
         let result = interp.eval("-pi*3/4.").unwrap();
-        if let Value::Number(n) = result {
-            let expected = -3.14159 * 3.0 / 4.0;
-            assert!((n - expected).abs() < 1e-5, "Expected {}, got {}", expected, n);
-        } else {
-            panic!("Expected Number, got {:?}", result);
-        }
+        let n = match result {
+            Value::Number(n) => n,
+            other => panic!("Expected Number, got {:?}", other),
+        };
+        let expected = -3.14159 * 3.0 / 4.0;
+        assert!((n - expected).abs() < 1e-5, "Expected {}, got {}", expected, n);
     }
 
     #[test]
