@@ -252,4 +252,87 @@ mod test {
         assert!(interp.eval_boolean("x == ''").unwrap());
         assert!(interp.eval_boolean("x != 'foo'").unwrap());
     }
+
+    #[test]
+    fn test_leading_dot_decimals() {
+        let mut interp = Interpreter::new();
+        // Basic leading dot cases
+        assert_eq!(interp.eval(".02").unwrap().to_string(), "0.02");
+        assert_eq!(interp.eval(".38").unwrap().to_string(), "0.38");
+        assert_eq!(interp.eval(".021").unwrap().to_string(), "0.021");
+        assert_eq!(interp.eval(".5").unwrap().to_string(), "0.5");
+
+        // With unary minus
+        assert_eq!(interp.eval("-.021").unwrap().to_string(), "-0.021");
+        assert_eq!(interp.eval("-.5").unwrap().to_string(), "-0.5");
+    }
+
+    #[test]
+    fn test_trailing_dot_decimals() {
+        let mut interp = Interpreter::new();
+        // Python accepts trailing dot as valid float syntax
+        assert_eq!(interp.eval("4.").unwrap().to_string(), "4");
+        assert_eq!(interp.eval("10.").unwrap().to_string(), "10");
+        assert_eq!(interp.eval("123.").unwrap().to_string(), "123");
+    }
+
+    #[test]
+    fn test_scientific_notation() {
+        let mut interp = Interpreter::new();
+        // Basic scientific notation
+        assert_eq!(interp.eval("1e-3").unwrap().to_string(), "0.001");
+        assert_eq!(interp.eval("1e3").unwrap().to_string(), "1000");
+        assert_eq!(interp.eval("2.5e-2").unwrap().to_string(), "0.025");
+        assert_eq!(interp.eval("1e+3").unwrap().to_string(), "1000");
+
+        // Uppercase E
+        assert_eq!(interp.eval("1E-3").unwrap().to_string(), "0.001");
+        assert_eq!(interp.eval("1E3").unwrap().to_string(), "1000");
+
+        // Leading dot with exponent
+        assert_eq!(interp.eval(".5e2").unwrap().to_string(), "50");
+        assert_eq!(interp.eval(".1e-2").unwrap().to_string(), "0.001");
+    }
+
+    #[test]
+    fn test_number_parsing_in_expressions() {
+        let mut interp = Interpreter::new();
+        interp.eval("width = 10.0").unwrap();
+        interp.eval("weight = 100.0").unwrap();
+        interp.eval("reflect = 1.0").unwrap();
+        interp.eval("pi = 3.14159").unwrap();
+
+        // Real-world xacro patterns - leading dots
+        assert_eq!(
+            interp.eval("reflect*(width+.02)").unwrap().to_string(),
+            "10.02"
+        );
+        assert_eq!(
+            interp.eval(".38 * weight").unwrap().to_string(),
+            "38"
+        );
+        // Floating point precision: -0.0145 - 0.021 = -0.0355 (with minor precision error)
+        let result = interp.eval("-0.0145 - .021").unwrap();
+        if let Value::Number(n) = result {
+            assert!((n - (-0.0355)).abs() < 1e-10, "Expected -0.0355, got {}", n);
+        } else {
+            panic!("Expected Number, got {:?}", result);
+        }
+
+        // Real-world xacro patterns - scientific notation
+        assert_eq!(
+            interp.eval("1e-3 * weight").unwrap().to_string(),
+            "0.1"
+        );
+
+        // Real-world xacro patterns - trailing dot
+        // -pi*3/4. = -3.14159*3/4 = -2.3561925
+        let result = interp.eval("-pi*3/4.").unwrap();
+        if let Value::Number(n) = result {
+            let expected = -3.14159 * 3.0 / 4.0;
+            assert!((n - expected).abs() < 1e-5, "Expected {}, got {}", expected, n);
+        } else {
+            panic!("Expected Number, got {:?}", result);
+        }
+    }
 }

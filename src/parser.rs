@@ -4,10 +4,10 @@ use nom::error::ErrorKind;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
-    character::complete::{char, multispace0},
-    combinator::opt,
+    character::complete::{char, digit0, digit1, multispace0, one_of},
+    combinator::{opt, recognize},
     multi::separated_list0,
-    sequence::{delimited, pair, preceded},
+    sequence::{delimited, pair, preceded, tuple},
     IResult,
 };
 
@@ -746,18 +746,38 @@ fn string_lit(input: &str) -> IResult<&str, Expr> {
 
 //---------------------------------------------------------
 // recognize_float: 整数 or 小数 (先頭符号は含まない想定)
+// Supports:
+// - Leading dot: .5, .02
+// - Trailing dot: 4., 123.
+// - Scientific notation: 1e-3, 2.5e2, .5e-2
 //---------------------------------------------------------
 fn recognize_float(input: &str) -> IResult<&str, String> {
-    let (input, integer_part) = take_while1(|c: char| c.is_ascii_digit())(input)?;
-    let (input, fractional_part) = opt(preceded(
-        char('.'),
-        take_while1(|c: char| c.is_ascii_digit()),
+    let (input, num_str) = alt((
+        // Case 1: With exponent (1.23e-4, 1e5, .5e2)
+        recognize(tuple((
+            alt((
+                // Standard: 123.456 or 123.
+                recognize(tuple((digit1, opt(tuple((char('.'), digit0)))))),
+                // Leading dot: .456
+                recognize(tuple((char('.'), digit1))),
+            )),
+            // Exponent: e/E, optional +/-, digits
+            tuple((
+                one_of("eE"),
+                opt(one_of("+-")),
+                digit1,
+            )),
+        ))),
+        // Case 2: Without exponent
+        alt((
+            // Standard: 123.456 or 123.
+            recognize(tuple((digit1, opt(tuple((char('.'), digit0)))))),
+            // Leading dot: .456
+            recognize(tuple((char('.'), digit1))),
+        )),
     ))(input)?;
-    if let Some(frac) = fractional_part {
-        Ok((input, format!("{}.{}", integer_part, frac)))
-    } else {
-        Ok((input, integer_part.to_string()))
-    }
+
+    Ok((input, num_str.to_string()))
 }
 
 //---------------------------------------------------------
