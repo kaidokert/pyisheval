@@ -750,31 +750,26 @@ fn string_lit(input: &str) -> IResult<&str, Expr> {
 // - Leading dot: .5, .02
 // - Trailing dot: 4., 123.
 // - Scientific notation: 1e-3, 2.5e2, .5e-2
+//
+// Grammar: mantissa [exponent]?
+// - mantissa: digit+ [. digit*]? | . digit+
+// - exponent: [eE] [+-]? digit+
 //---------------------------------------------------------
 fn recognize_float(input: &str) -> IResult<&str, String> {
-    let (input, num_str) = alt((
-        // Case 1: With exponent (1.23e-4, 1e5, .5e2)
-        recognize(tuple((
-            alt((
-                // Standard: 123.456 or 123.
-                recognize(tuple((digit1, opt(tuple((char('.'), digit0)))))),
-                // Leading dot: .456
-                recognize(tuple((char('.'), digit1))),
-            )),
-            // Exponent: e/E, optional +/-, digits
-            tuple((
-                one_of("eE"),
-                opt(one_of("+-")),
-                digit1,
-            )),
-        ))),
-        // Case 2: Without exponent
+    let (input, num_str) = recognize(pair(
+        // Mantissa: standard (123.456, 123.) or leading dot (.456)
         alt((
             // Standard: 123.456 or 123.
             recognize(tuple((digit1, opt(tuple((char('.'), digit0)))))),
             // Leading dot: .456
             recognize(tuple((char('.'), digit1))),
         )),
+        // Optional exponent: e/E, optional +/-, digits
+        opt(tuple((
+            one_of("eE"),
+            opt(one_of("+-")),
+            digit1,
+        ))),
     ))(input)?;
 
     Ok((input, num_str.to_string()))
