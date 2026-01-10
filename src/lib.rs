@@ -302,7 +302,7 @@ mod test {
         interp.eval("reflect = 1.0").unwrap();
         interp.eval("pi = 3.14159").unwrap();
 
-        // Real-world xacro patterns - leading dots
+        // Leading dots example
         assert_eq!(
             interp.eval("reflect*(width+.02)").unwrap().to_string(),
             "10.02"
@@ -319,13 +319,13 @@ mod test {
             panic!("Expected Number, got {:?}", result);
         }
 
-        // Real-world xacro patterns - scientific notation
+        // Scientific notation example
         assert_eq!(
             interp.eval("1e-3 * weight").unwrap().to_string(),
             "0.1"
         );
 
-        // Real-world xacro patterns - trailing dot
+        // Trailing dot example
         // -pi*3/4. = -3.14159*3/4 = -2.3561925
         let result = interp.eval("-pi*3/4.").unwrap();
         if let Value::Number(n) = result {
