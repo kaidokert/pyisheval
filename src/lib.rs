@@ -344,28 +344,17 @@ mod test {
         // Invalid: number followed by invalid character should fail
         let result = interp.eval("123..456");
         assert!(
-            result.is_err(),
-            "Should fail to parse '123..456' (double dot)"
-        );
-        // Error should contain "Parse error" and reference part of the input
-        let err_msg = format!("{:?}", result.unwrap_err());
-        assert!(
-            err_msg.contains("Parse error"),
-            "Error message should contain 'Parse error', got: {}",
-            err_msg
+            matches!(&result, Err(EvalError::ParseError(_))),
+            "Expected a ParseError for '123..456', but got {:?}",
+            result
         );
 
         // Invalid: starts with valid float syntax but has issues
         let result = interp.eval(".e5");
         assert!(
-            result.is_err(),
-            "Should fail to parse '.e5' (no digit after dot)"
-        );
-        let err_msg = format!("{:?}", result.unwrap_err());
-        assert!(
-            err_msg.contains("Parse error"),
-            "Error message should contain 'Parse error', got: {}",
-            err_msg
+            matches!(&result, Err(EvalError::ParseError(_))),
+            "Expected a ParseError for '.e5', but got {:?}",
+            result
         );
     }
 }
