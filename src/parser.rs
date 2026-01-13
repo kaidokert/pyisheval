@@ -152,16 +152,8 @@ fn logical_not(input: &str) -> IResult<&str, Expr> {
 
         if !is_identifier_part {
             // This is a standalone "not" operator
-            if input_after_not.is_empty() {
-                // "not" at the end of input is a syntax error
-                return Err(nom::Err::Error(Error::new(
-                    input_after_not,
-                    ErrorKind::Tag,
-                )));
-            }
-
-            let (input, _) = multispace0(input_after_not)?;
-            let (input, operand) = logical_not(input)?;  // Recursive for chaining: not not x
+            // It must be followed by an operand, which `preceded` will handle
+            let (input, operand) = preceded(multispace0, logical_not)(input_after_not)?;
             return Ok((
                 input,
                 Expr::UnaryOp {

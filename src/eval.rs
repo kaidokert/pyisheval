@@ -689,10 +689,7 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
         Expr::UnaryOp { op, operand } => {
             let (val, env) = eval_expr(*operand, env)?;
             let result = match op {
-                UnOp::Not => {
-                    let is_true = val.to_bool();
-                    Value::Number(if is_true { 0.0 } else { 1.0 })
-                }
+                UnOp::Not => Value::Number(if val.to_bool() { 0.0 } else { 1.0 }),
             };
             Ok((result, env))
         }
