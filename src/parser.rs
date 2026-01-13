@@ -275,13 +275,14 @@ fn unary_expr(input: &str) -> IResult<&str, Expr> {
     let (input, _) = multispace0(input)?;
 
     // Check for "not" keyword
-    if let Ok((input_after_not, _)) = tag::<&str, &str, nom::error::Error<&str>>("not")(input) {
+    if let Ok((input_after_not, _)) = tag::<_, _, nom::error::Error<_>>("not")(input) {
         // Boundary check: ensure "not" is not part of an identifier like "notfoo"
-        if let Some(next_char) = input_after_not.chars().next() {
-            if next_char.is_alphanumeric() || next_char == '_' {
-                // Fall through to normal parsing
-            } else {
-                // Parse "not" as UnaryOp
+        match input_after_not.chars().next() {
+            Some(c) if c.is_alphanumeric() || c == '_' => {
+                // Part of an identifier (e.g., "notable"), fall through to parse as identifier
+            }
+            Some(_) => {
+                // Standalone "not" operator
                 let (input, _) = multispace0(input_after_not)?;
                 let (input, operand) = unary_expr(input)?;
                 return Ok((
@@ -292,11 +293,13 @@ fn unary_expr(input: &str) -> IResult<&str, Expr> {
                     },
                 ));
             }
-        } else {
-            return Err(nom::Err::Error(Error::new(
-                input_after_not,
-                ErrorKind::Tag,
-            )));
+            None => {
+                // "not" at the end of input is a syntax error
+                return Err(nom::Err::Error(Error::new(
+                    input_after_not,
+                    ErrorKind::Tag,
+                )));
+            }
         }
     }
 

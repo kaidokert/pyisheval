@@ -375,13 +375,13 @@ mod test {
 
     #[test]
     fn test_not_operator_strings() {
-        let interp = Interpreter::new();
+        let mut interp = Interpreter::new();
         // not '' is True
-        assert_eq!(interp.eval_with_context("not ''", &Default::default()).unwrap().to_string(), "1");
+        assert_eq!(interp.eval("not ''").unwrap().to_string(), "1");
         // not 'foo' is False
-        assert_eq!(interp.eval_with_context("not 'foo'", &Default::default()).unwrap().to_string(), "0");
+        assert_eq!(interp.eval("not 'foo'").unwrap().to_string(), "0");
         // not 'hello' is False
-        assert_eq!(interp.eval_with_context("not 'hello'", &Default::default()).unwrap().to_string(), "0");
+        assert_eq!(interp.eval("not 'hello'").unwrap().to_string(), "0");
     }
 
     #[test]
