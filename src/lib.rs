@@ -443,7 +443,11 @@ mod test {
         // "not 1 == 0" should parse as "not (1 == 0)" → not False → True
         assert_eq!(interp.eval("not 1 == 0").unwrap().to_string(), "1");
 
+        // Critical test case: not 2 == 1 should be not (2 == 1) → not False → True
+        assert_eq!(interp.eval("not 2 == 1").unwrap().to_string(), "1");
+
         // But we want to ensure parentheses work correctly too
         assert_eq!(interp.eval("(not 1) == 0").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("(not 2) == 1").unwrap().to_string(), "0");
     }
 }

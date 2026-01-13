@@ -112,18 +112,18 @@ fn lambda_expr(input: &str) -> IResult<&str, Expr> {
 // 三項演算子 (cond_expr if condition else cond_expr)
 //---------------------------------------------------------
 fn conditional_expr(input: &str) -> IResult<&str, Expr> {
-    let (input, if_true_expr) = comparison(input)?;
+    let (input, if_true_expr) = logical_not(input)?;
 
     let (input, maybe_if) = opt(preceded(multispace0, tag("if")))(input)?;
     if maybe_if.is_none() {
         return Ok((input, if_true_expr));
     }
     let (input, _) = multispace0(input)?;
-    let (input, condition_expr) = comparison(input)?;
+    let (input, condition_expr) = logical_not(input)?;
     let (input, _) = multispace0(input)?;
     let (input, _) = tag("else")(input)?;
     let (input, _) = multispace0(input)?;
-    let (input, if_false_expr) = comparison(input)?;
+    let (input, if_false_expr) = logical_not(input)?;
 
     Ok((
         input,
@@ -133,6 +133,48 @@ fn conditional_expr(input: &str) -> IResult<&str, Expr> {
             if_false: Box::new(if_false_expr),
         },
     ))
+}
+
+//---------------------------------------------------------
+// logical_not: "not"? comparison
+// Python's "not" operator has lower precedence than comparisons
+//---------------------------------------------------------
+fn logical_not(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = multispace0(input)?;
+
+    // Check for "not" keyword
+    if let Ok((input_after_not, _)) = tag::<_, _, nom::error::Error<_>>("not")(input) {
+        // Boundary check: ensure "not" is not part of an identifier like "notfoo"
+        let is_identifier_part = input_after_not
+            .chars()
+            .next()
+            .map_or(false, |c| c.is_alphanumeric() || c == '_');
+
+        if !is_identifier_part {
+            // This is a standalone "not" operator
+            if input_after_not.is_empty() {
+                // "not" at the end of input is a syntax error
+                return Err(nom::Err::Error(Error::new(
+                    input_after_not,
+                    ErrorKind::Tag,
+                )));
+            }
+
+            let (input, _) = multispace0(input_after_not)?;
+            let (input, operand) = logical_not(input)?;  // Recursive for chaining: not not x
+            return Ok((
+                input,
+                Expr::UnaryOp {
+                    op: UnOp::Not,
+                    operand: Box::new(operand),
+                },
+            ));
+        }
+        // Otherwise, it's part of an identifier (e.g., "notable"), so fall through
+    }
+
+    // No "not" operator, parse comparison
+    comparison(input)
 }
 
 //---------------------------------------------------------
@@ -272,39 +314,6 @@ fn exponentiation(input: &str) -> IResult<&str, Expr> {
 //   例: -10 や +10, -foo などを "0 - foo" 的なASTに変換
 //---------------------------------------------------------
 fn unary_expr(input: &str) -> IResult<&str, Expr> {
-    let (input, _) = multispace0(input)?;
-
-    // Check for "not" keyword
-    if let Ok((input_after_not, _)) = tag::<_, _, nom::error::Error<_>>("not")(input) {
-        // Boundary check: ensure "not" is not part of an identifier like "notfoo"
-        let is_identifier_part = input_after_not
-            .chars()
-            .next()
-            .map_or(false, |c| c.is_alphanumeric() || c == '_');
-
-        if !is_identifier_part {
-            // This is a standalone "not" operator
-            if input_after_not.is_empty() {
-                // "not" at the end of input is a syntax error
-                return Err(nom::Err::Error(Error::new(
-                    input_after_not,
-                    ErrorKind::Tag,
-                )));
-            }
-
-            let (input, _) = multispace0(input_after_not)?;
-            let (input, operand) = unary_expr(input)?;
-            return Ok((
-                input,
-                Expr::UnaryOp {
-                    op: UnOp::Not,
-                    operand: Box::new(operand),
-                },
-            ));
-        }
-        // Otherwise, it's part of an identifier (e.g., "notable"), so fall through
-    }
-
     // まずオプショナルな符号を取る
     let (input, sign_opt) = opt(alt((char('+'), char('-'))))(input)?;
     let (input, _) = multispace0(input)?;
