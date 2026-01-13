@@ -1,4 +1,4 @@
-use crate::ast::{BinOp, Expr};
+use crate::ast::{BinOp, Expr, UnOp};
 use nom::error::Error;
 use nom::error::ErrorKind;
 use nom::{
@@ -272,6 +272,34 @@ fn exponentiation(input: &str) -> IResult<&str, Expr> {
 //   例: -10 や +10, -foo などを "0 - foo" 的なASTに変換
 //---------------------------------------------------------
 fn unary_expr(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = multispace0(input)?;
+
+    // Check for "not" keyword
+    if let Ok((input_after_not, _)) = tag::<&str, &str, nom::error::Error<&str>>("not")(input) {
+        // Boundary check: ensure "not" is not part of an identifier like "notfoo"
+        if let Some(next_char) = input_after_not.chars().next() {
+            if next_char.is_alphanumeric() || next_char == '_' {
+                // Fall through to normal parsing
+            } else {
+                // Parse "not" as UnaryOp
+                let (input, _) = multispace0(input_after_not)?;
+                let (input, operand) = unary_expr(input)?;
+                return Ok((
+                    input,
+                    Expr::UnaryOp {
+                        op: UnOp::Not,
+                        operand: Box::new(operand),
+                    },
+                ));
+            }
+        } else {
+            return Err(nom::Err::Error(Error::new(
+                input_after_not,
+                ErrorKind::Tag,
+            )));
+        }
+    }
+
     // まずオプショナルな符号を取る
     let (input, sign_opt) = opt(alt((char('+'), char('-'))))(input)?;
     let (input, _) = multispace0(input)?;
