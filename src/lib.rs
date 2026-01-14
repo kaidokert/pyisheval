@@ -493,5 +493,11 @@ mod test {
         interp.eval("foo = 1").unwrap();
         assert_eq!(interp.eval("foo == True").unwrap().to_string(), "1");
         assert_eq!(interp.eval("foo == False").unwrap().to_string(), "0");
+
+        // Test arithmetic operations with True/False
+        assert_eq!(interp.eval("True + 1").unwrap().to_string(), "2");
+        assert_eq!(interp.eval("False + 1").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("True * 5").unwrap().to_string(), "5");
+        assert_eq!(interp.eval("False * 5").unwrap().to_string(), "0");
     }
 }
