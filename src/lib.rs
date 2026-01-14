@@ -483,15 +483,15 @@ mod test {
     }
 
     #[test]
-    fn test_builtin_constants_xacro_use_case() {
+    fn test_builtin_constants_in_expressions() {
         let mut interp = Interpreter::new();
-        // Simulate xacro use case: mirror_dae == True
-        interp.eval("mirror_dae = 0").unwrap();
-        assert_eq!(interp.eval("mirror_dae == True").unwrap().to_string(), "0");
-        assert_eq!(interp.eval("mirror_dae == False").unwrap().to_string(), "1");
+        // Test variable comparison with True/False
+        interp.eval("foo = 0").unwrap();
+        assert_eq!(interp.eval("foo == True").unwrap().to_string(), "0");
+        assert_eq!(interp.eval("foo == False").unwrap().to_string(), "1");
 
-        interp.eval("mirror_dae = 1").unwrap();
-        assert_eq!(interp.eval("mirror_dae == True").unwrap().to_string(), "1");
-        assert_eq!(interp.eval("mirror_dae == False").unwrap().to_string(), "0");
+        interp.eval("foo = 1").unwrap();
+        assert_eq!(interp.eval("foo == True").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("foo == False").unwrap().to_string(), "0");
     }
 }
