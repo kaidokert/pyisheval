@@ -450,4 +450,52 @@ mod test {
         assert_eq!(interp.eval("(not 1) == 0").unwrap().to_string(), "1");
         assert_eq!(interp.eval("(not 2) == 1").unwrap().to_string(), "0");
     }
+
+    #[test]
+    fn test_builtin_constants() {
+        let mut interp = Interpreter::new();
+        // Test True constant
+        assert_eq!(interp.eval("True").unwrap().to_string(), "1");
+        // Test False constant
+        assert_eq!(interp.eval("False").unwrap().to_string(), "0");
+        // Test None constant
+        assert_eq!(interp.eval("None").unwrap().to_string(), "0");
+    }
+
+    #[test]
+    fn test_builtin_constants_comparisons() {
+        let mut interp = Interpreter::new();
+        // True == 1
+        assert_eq!(interp.eval("True == 1").unwrap().to_string(), "1");
+        // False == 0
+        assert_eq!(interp.eval("False == 0").unwrap().to_string(), "1");
+        // True != False
+        assert_eq!(interp.eval("True != False").unwrap().to_string(), "1");
+        // True == False should be false
+        assert_eq!(interp.eval("True == False").unwrap().to_string(), "0");
+    }
+
+    #[test]
+    fn test_builtin_constants_with_not() {
+        let mut interp = Interpreter::new();
+        // not True is False
+        assert_eq!(interp.eval("not True").unwrap().to_string(), "0");
+        // not False is True
+        assert_eq!(interp.eval("not False").unwrap().to_string(), "1");
+        // not None is True
+        assert_eq!(interp.eval("not None").unwrap().to_string(), "1");
+    }
+
+    #[test]
+    fn test_builtin_constants_xacro_use_case() {
+        let mut interp = Interpreter::new();
+        // Simulate xacro use case: mirror_dae == True
+        interp.eval("mirror_dae = 0").unwrap();
+        assert_eq!(interp.eval("mirror_dae == True").unwrap().to_string(), "0");
+        assert_eq!(interp.eval("mirror_dae == False").unwrap().to_string(), "1");
+
+        interp.eval("mirror_dae = 1").unwrap();
+        assert_eq!(interp.eval("mirror_dae == True").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("mirror_dae == False").unwrap().to_string(), "0");
+    }
 }
