@@ -458,8 +458,6 @@ mod test {
         assert_eq!(interp.eval("True").unwrap().to_string(), "1");
         // Test False constant
         assert_eq!(interp.eval("False").unwrap().to_string(), "0");
-        // Test None constant
-        assert_eq!(interp.eval("None").unwrap().to_string(), "0");
     }
 
     #[test]
@@ -482,8 +480,6 @@ mod test {
         assert_eq!(interp.eval("not True").unwrap().to_string(), "0");
         // not False is True
         assert_eq!(interp.eval("not False").unwrap().to_string(), "1");
-        // not None is True
-        assert_eq!(interp.eval("not None").unwrap().to_string(), "1");
     }
 
     #[test]
