@@ -151,31 +151,32 @@ where
     let (mut input, _) = multispace0(input)?;
 
     loop {
-        // Try to match the operator keyword with boundary check
-        let kw_result = tag::<_, _, nom::error::Error<_>>(keyword)(input);
-        if let Ok((input_after_kw, _)) = kw_result {
+        if let Ok((input_after_kw, _)) = tag::<_, _, nom::error::Error<_>>(keyword)(input) {
             // Boundary check: ensure keyword is not part of an identifier
             let is_identifier_part = input_after_kw
                 .chars()
                 .next()
                 .map_or(false, |c| c.is_alphanumeric() || c == '_');
 
-            if !is_identifier_part {
-                // This is a standalone operator
-                let (next_input, _) = multispace0(input_after_kw)?;
-                let (next_input, right) = inner(next_input)?;
-                expr = Expr::BinaryOp {
-                    op,
-                    left: Box::new(expr),
-                    right: Box::new(right),
-                };
-                let (new_input, _) = multispace0(next_input)?;
-                input = new_input;
-                continue;
+            if is_identifier_part {
+                // Keyword is part of an identifier, so we're done
+                break;
             }
+
+            // This is a standalone operator
+            let (next_input, _) = multispace0(input_after_kw)?;
+            let (next_input, right) = inner(next_input)?;
+            expr = Expr::BinaryOp {
+                op,
+                left: Box::new(expr),
+                right: Box::new(right),
+            };
+            let (new_input, _) = multispace0(next_input)?;
+            input = new_input;
+        } else {
+            // No more operators found
+            break;
         }
-        // No operator found, break
-        break;
     }
 
     Ok((input, expr))
