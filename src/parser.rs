@@ -123,7 +123,8 @@ fn conditional_expr(input: &str) -> IResult<&str, Expr> {
     let (input, _) = multispace0(input)?;
     let (input, _) = tag("else")(input)?;
     let (input, _) = multispace0(input)?;
-    let (input, if_false_expr) = logical_or(input)?;
+    // Recursively parse else branch to allow chained conditionals
+    let (input, if_false_expr) = conditional_expr(input)?;
 
     Ok((
         input,

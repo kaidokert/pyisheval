@@ -164,6 +164,17 @@ mod test {
     }
 
     #[test]
+    fn test_chained_conditional() {
+        let mut interp = Interpreter::new();
+        // Python: 1 if False else 2 if False else 3 → evaluates to 3
+        assert_eq!(interp.eval("1 if 0 else 2 if 0 else 3").unwrap().to_string(), "3");
+        // Python: 1 if True else 2 if False else 3 → evaluates to 1
+        assert_eq!(interp.eval("1 if 1 else 2 if 0 else 3").unwrap().to_string(), "1");
+        // Python: 1 if False else 2 if True else 3 → evaluates to 2
+        assert_eq!(interp.eval("1 if 0 else 2 if 1 else 3").unwrap().to_string(), "2");
+    }
+
+    #[test]
     fn test_string_method() {
         let mut interp = Interpreter::new();
         assert_eq!(interp.eval("'hello'.upper()").unwrap().to_string(), "HELLO");
