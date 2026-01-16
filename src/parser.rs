@@ -169,9 +169,8 @@ where
                     left: Box::new(expr),
                     right: Box::new(right),
                 };
-                input = next_input;
-                let (next_input, _) = multispace0(input)?;
-                input = next_input;
+                let (new_input, _) = multispace0(next_input)?;
+                input = new_input;
                 continue;
             }
         }
