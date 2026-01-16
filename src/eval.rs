@@ -699,28 +699,16 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
         }
         Expr::BinaryOp { op, left, right } => {
             // Handle And/Or with short-circuit evaluation
-            match op {
-                BinOp::And => {
-                    let (lval, env) = eval_expr(*left, env)?;
-                    if !lval.to_bool() {
-                        // Short-circuit: left is falsy, return it without evaluating right
-                        return Ok((lval, env));
-                    }
-                    // Left is truthy, evaluate and return right
-                    let (rval, env) = eval_expr(*right, env)?;
-                    return Ok((rval, env));
+            if op == BinOp::And || op == BinOp::Or {
+                let (lval, env) = eval_expr(*left, env)?;
+                let is_truthy = lval.to_bool();
+
+                // Short-circuit: return left if (And with falsy left) or (Or with truthy left)
+                if (op == BinOp::And && !is_truthy) || (op == BinOp::Or && is_truthy) {
+                    return Ok((lval, env));
                 }
-                BinOp::Or => {
-                    let (lval, env) = eval_expr(*left, env)?;
-                    if lval.to_bool() {
-                        // Short-circuit: left is truthy, return it without evaluating right
-                        return Ok((lval, env));
-                    }
-                    // Left is falsy, evaluate and return right
-                    let (rval, env) = eval_expr(*right, env)?;
-                    return Ok((rval, env));
-                }
-                _ => {}
+                // Otherwise, evaluate and return right
+                return eval_expr(*right, env);
             }
 
             // For other operators, evaluate both sides
@@ -829,8 +817,7 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
                     _ => return Err(EvalError::TypeError),
                 },
                 BinOp::And | BinOp::Or => {
-                    // These are handled above with short-circuit evaluation
-                    unreachable!("And/Or should be handled before evaluating both operands")
+                    unreachable!("And/Or handled above with short-circuit evaluation")
                 }
             };
             Ok((val, env))
