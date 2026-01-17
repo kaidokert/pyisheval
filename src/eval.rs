@@ -46,6 +46,32 @@ pub enum Value {
     },
 }
 
+/// Compare two sets as multisets (order-independent, counts matter).
+///
+/// Sets are backed by Vec which can contain duplicates due to imperfect
+/// deduplication (e.g., set([1, 1.0]) may have duplicates). This handles
+/// both true sets and multisets correctly.
+///
+/// Time complexity: O(n²), but avoids expensive clones and memory shifts.
+fn multiset_equal(a: &[Value], b: &[Value]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    // Use boolean flags to track matched elements (avoids cloning Values)
+    let mut b_matched = vec![false; b.len()];
+    'outer: for item_a in a {
+        for (i, item_b) in b.iter().enumerate() {
+            if !b_matched[i] && item_a == item_b {
+                b_matched[i] = true;
+                continue 'outer;
+            }
+        }
+        // No match found for item_a
+        return false;
+    }
+    true
+}
+
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -61,24 +87,7 @@ impl PartialEq for Value {
             // Compare collections recursively
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Tuple(a), Value::Tuple(b)) => a == b,
-            (Value::Set(a), Value::Set(b)) => {
-                // Sets must be compared order-independently and handle duplicates.
-                // Value::Set is backed by Vec which can contain duplicates due to
-                // imperfect deduplication (e.g., set([1, 1.0]) may have duplicates).
-                if a.len() != b.len() {
-                    return false;
-                }
-                // O(n^2) multiset comparison: match each element and remove from copy
-                let mut b_items = b.clone();
-                for item_a in a {
-                    if let Some(pos) = b_items.iter().position(|item_b| item_a == item_b) {
-                        b_items.remove(pos);
-                    } else {
-                        return false;
-                    }
-                }
-                true
-            }
+            (Value::Set(a), Value::Set(b)) => multiset_equal(a, b),
             (Value::Dict(a), Value::Dict(b)) => a == b,
 
             // Builtins and methods: compare by name (stable identifiers)
