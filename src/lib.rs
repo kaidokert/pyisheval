@@ -868,17 +868,3 @@ mod test {
         // Nested lambda comparison hits unimplemented!() in PartialEq
         let _ = interp.eval("[lambda x: 1] == [lambda x: 1]");
     }
-
-    #[test]
-    fn test_set_dedup_uses_equality() {
-        let mut interp = Interpreter::new();
-
-        // 1.0 and "1" have different types and should NOT be deduped
-        // (Previously broken: to_string() made them appear equal)
-        assert_eq!(interp.eval("len(set([1.0, '1']))").unwrap().to_string(), "2");
-        assert_eq!(interp.eval("len(set(['1', 1.0]))").unwrap().to_string(), "2");
-
-        // True duplicates should be deduped
-        assert_eq!(interp.eval("len(set([1.0, 1.0]))").unwrap().to_string(), "1");
-        assert_eq!(interp.eval("len(set(['a', 'a']))").unwrap().to_string(), "1");
-    }

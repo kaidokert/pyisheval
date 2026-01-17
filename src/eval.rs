@@ -337,43 +337,36 @@ fn builtin_set_value(args: &[Value]) -> Result<Value, EvalError> {
         1 => {
             match &args[0] {
                 Value::List(lst) => {
-                    // Deduplicate using actual equality, not string representation
-                    let mut v = Vec::new();
-                    for item in lst {
-                        if !v.iter().any(|existing| existing == item) {
-                            v.push(item.clone());
-                        }
-                    }
+                    // 重複排除するか、ここでは単にVecに詰める程度
+                    let mut v = lst.clone();
+                    // 簡易的にユニーク化
+                    v.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+                    v.dedup_by(|a, b| a.to_string() == b.to_string());
                     Ok(Value::Set(v))
                 }
                 Value::Tuple(tup) => {
-                    let mut v = Vec::new();
-                    for item in tup {
-                        if !v.iter().any(|existing| existing == item) {
-                            v.push(item.clone());
-                        }
-                    }
+                    let mut v = tup.clone();
+                    v.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+                    v.dedup_by(|a, b| a.to_string() == b.to_string());
                     Ok(Value::Set(v))
                 }
                 Value::StringLit(s) => {
                     let mut v = Vec::new();
                     for c in s.chars() {
-                        let char_val = Value::StringLit(c.to_string());
-                        if !v.iter().any(|existing| existing == &char_val) {
-                            v.push(char_val);
-                        }
+                        v.push(Value::StringLit(c.to_string()));
                     }
+                    v.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+                    v.dedup_by(|a, b| a.to_string() == b.to_string());
                     Ok(Value::Set(v))
                 }
                 // Dict ならキーをセット化 etc... 必要に応じて
                 Value::Dict(d) => {
                     let mut v = Vec::new();
                     for k in d.keys() {
-                        let key_val = Value::StringLit(k.clone());
-                        if !v.iter().any(|existing| existing == &key_val) {
-                            v.push(key_val);
-                        }
+                        v.push(Value::StringLit(k.clone()));
                     }
+                    v.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+                    v.dedup_by(|a, b| a.to_string() == b.to_string());
                     Ok(Value::Set(v))
                 }
                 _ => Err(EvalError::TypeError),
