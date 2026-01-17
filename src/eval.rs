@@ -70,37 +70,83 @@ fn multiset_equal(a: &[Value], b: &[Value]) -> bool {
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
+        use std::mem::discriminant;
+
+        // Special case: Var and StringLit are semantically equivalent
         match (self, other) {
-            // Compare simple values
-            (Value::Number(a), Value::Number(b)) => a == b,
-            (Value::Var(a), Value::Var(b)) => a == b,
-            (Value::StringLit(a), Value::StringLit(b)) => a == b,
+            (Value::Var(a), Value::StringLit(b)) | (Value::StringLit(a), Value::Var(b)) => {
+                return a == b;
+            }
+            _ => {}
+        }
 
-            // Cross-type string comparisons (Var and StringLit are semantically equivalent)
-            (Value::Var(a), Value::StringLit(b)) => a == b,
-            (Value::StringLit(a), Value::Var(b)) => a == b,
+        // Lambda comparisons always return false (no identity tracking)
+        // Direct lambda == lambda throws TypeError in eval_expr, so this only
+        // affects lambdas inside collections (e.g., [lambda x: 1] == [lambda x: 2])
+        if matches!(self, Value::Lambda { .. }) || matches!(other, Value::Lambda { .. }) {
+            return false;
+        }
 
-            // Compare collections recursively
-            (Value::List(a), Value::List(b)) => a == b,
-            (Value::Tuple(a), Value::Tuple(b)) => a == b,
-            (Value::Set(a), Value::Set(b)) => multiset_equal(a, b),
-            (Value::Dict(a), Value::Dict(b)) => a == b,
+        // Different types are never equal (using discriminant for type checking)
+        if discriminant(self) != discriminant(other) {
+            return false;
+        }
 
-            // Builtins and methods: compare by name (stable identifiers)
-            (Value::Builtin { name: a, .. }, Value::Builtin { name: b, .. }) => a == b,
-            (Value::BuiltinValue { name: a, .. }, Value::BuiltinValue { name: b, .. }) => a == b,
-            (Value::BoundMethod { receiver: a_rec, method: a_meth },
-             Value::BoundMethod { receiver: b_rec, method: b_meth }) => {
+        // Same-type comparisons - exhaustive match ensures compiler catches new variants
+        // No catch-all pattern: adding a new Value variant will cause a compile error here
+        match self {
+            Value::Number(a) => {
+                let Value::Number(b) = other else { unreachable!() };
+                a == b
+            }
+            Value::Var(a) => {
+                let Value::Var(b) = other else { unreachable!() };
+                a == b
+            }
+            Value::StringLit(a) => {
+                let Value::StringLit(b) = other else { unreachable!() };
+                a == b
+            }
+            Value::List(a) => {
+                let Value::List(b) = other else { unreachable!() };
+                a == b
+            }
+            Value::Tuple(a) => {
+                let Value::Tuple(b) = other else { unreachable!() };
+                a == b
+            }
+            Value::Set(a) => {
+                let Value::Set(b) = other else { unreachable!() };
+                multiset_equal(a, b)
+            }
+            Value::Dict(a) => {
+                let Value::Dict(b) = other else { unreachable!() };
+                a == b
+            }
+            Value::Builtin { name: a, .. } => {
+                let Value::Builtin { name: b, .. } = other else { unreachable!() };
+                a == b
+            }
+            Value::BuiltinValue { name: a, .. } => {
+                let Value::BuiltinValue { name: b, .. } = other else { unreachable!() };
+                a == b
+            }
+            Value::BoundMethod {
+                receiver: a_rec,
+                method: a_meth,
+            } => {
+                let Value::BoundMethod {
+                    receiver: b_rec,
+                    method: b_meth,
+                } = other
+                else {
+                    unreachable!()
+                };
                 a_meth == b_meth && a_rec == b_rec
             }
-
-            // Lambda comparisons always return false (no identity tracking)
-            // Direct lambda == lambda throws TypeError in eval_expr, so this only
-            // affects lambdas inside collections (e.g., [lambda x: 1] == [lambda x: 2])
-            (Value::Lambda { .. }, _) | (_, Value::Lambda { .. }) => false,
-
-            // Different types are never equal
-            _ => false,
+            Value::Lambda { .. } => {
+                unreachable!("Lambda comparisons handled above")
+            }
         }
     }
 }
