@@ -771,9 +771,16 @@ mod test {
         assert_eq!(interp.eval("{'a': 1} != {'a': 2}").unwrap().to_string(), "1");
         assert_eq!(interp.eval("{} == {}").unwrap().to_string(), "1");
 
+        // Sets
+        assert_eq!(interp.eval("set([1, 2]) == set([1, 2])").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("set([1, 2]) == set([2, 1])").unwrap().to_string(), "1"); // Order shouldn't matter
+        assert_eq!(interp.eval("set([1, 2]) != set([1, 3])").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("set() == set()").unwrap().to_string(), "1");
+
         // Mixed-type (collection vs non-collection) should be False
         assert_eq!(interp.eval("[1, 2] == 5").unwrap().to_string(), "0");
         assert_eq!(interp.eval("[1, 2] != 5").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("set([1, 2]) == 5").unwrap().to_string(), "0");
     }
 
     #[test]

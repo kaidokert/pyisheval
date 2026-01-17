@@ -57,7 +57,14 @@ impl PartialEq for Value {
             // Compare collections recursively
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Tuple(a), Value::Tuple(b)) => a == b,
-            (Value::Set(a), Value::Set(b)) => a == b,
+            (Value::Set(a), Value::Set(b)) => {
+                // Sets must be compared order-independently
+                if a.len() != b.len() {
+                    return false;
+                }
+                // O(n^2) but correct for order-independent set equality
+                a.iter().all(|item_a| b.iter().any(|item_b| item_a == item_b))
+            }
             (Value::Dict(a), Value::Dict(b)) => a == b,
 
             // Functions/lambdas: always false (no identity tracking)
@@ -829,24 +836,8 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
                     }
                     _ => return Err(EvalError::TypeError),
                 },
-                BinOp::Eq => {
-                    if core::mem::discriminant(&lval) == core::mem::discriminant(&rval) {
-                        // For same-type comparisons, use the derived PartialEq.
-                        Value::Number(if lval == rval { 1.0 } else { 0.0 })
-                    } else {
-                        // Mixed-type comparisons are always false.
-                        Value::Number(0.0)
-                    }
-                }
-                BinOp::Ne => {
-                    if core::mem::discriminant(&lval) == core::mem::discriminant(&rval) {
-                        // For same-type comparisons, use the derived PartialEq.
-                        Value::Number(if lval != rval { 1.0 } else { 0.0 })
-                    } else {
-                        // Mixed-type comparisons are always true.
-                        Value::Number(1.0)
-                    }
-                }
+                BinOp::Eq => Value::Number(if lval == rval { 1.0 } else { 0.0 }),
+                BinOp::Ne => Value::Number(if lval != rval { 1.0 } else { 0.0 }),
                 BinOp::And | BinOp::Or => {
                     unreachable!("And/Or handled above with short-circuit evaluation")
                 }
