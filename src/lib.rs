@@ -784,25 +784,61 @@ mod test {
     }
 
     #[test]
+    fn test_set_equality_with_duplicates() {
+        let mut interp = Interpreter::new();
+
+        // Sets deduplicate properly, so duplicates in input don't affect equality.
+        // Our multiset comparison handles the edge case where Value::Set might
+        // contain duplicates (though builtin_set_value should prevent this).
+
+        // Both deduplicate to {1, 2} -> equal
+        assert_eq!(interp.eval("set([1, 1, 2]) == set([1, 2, 2])").unwrap().to_string(), "1");
+
+        // Different elements after dedup -> not equal
+        assert_eq!(interp.eval("set([1, 2]) == set([1, 3])").unwrap().to_string(), "0");
+
+        // Same elements, order doesn't matter -> equal
+        assert_eq!(interp.eval("set([2, 1]) == set([1, 2])").unwrap().to_string(), "1");
+    }
+
+    #[test]
     fn test_lambda_comparison() {
         let mut interp = Interpreter::new();
 
-        // TODO: Lambdas always compare as False (limitation: no object identity tracking)
+        // Lambda comparisons throw TypeError - they require identity tracking
+        // that we don't have (would need Rc wrappers + ptr_eq).
         interp.eval("f1 = lambda x: 1").unwrap();
         interp.eval("f2 = lambda x: 1").unwrap();
 
-        // pyisheval: f1 == f2 returns False (correct - different lambdas)
-        let result = interp.eval("f1 == f2").unwrap();
-        assert_eq!(result.to_string(), "0");
+        // All lambda comparisons throw TypeError
+        assert!(matches!(
+            interp.eval("f1 == f2"),
+            Err(crate::EvalError::TypeError)
+        ));
 
-        // TODO: f1 == f1 also returns False, Python would return True ( object identity )
-        let result2 = interp.eval("f1 == f1").unwrap();
-        assert_eq!(result2.to_string(), "0");
+        assert!(matches!(
+            interp.eval("f1 == f1"),
+            Err(crate::EvalError::TypeError)
+        ));
 
-        // Assignment: f2 = f1 still results in False for comparison
-        interp.eval("f2 = f1").unwrap();
-        let result3 = interp.eval("f2 == f1").unwrap();
-        assert_eq!(result3.to_string(), "0");
+        assert!(matches!(
+            interp.eval("f1 != f2"),
+            Err(crate::EvalError::TypeError)
+        ));
+    }
+
+    #[test]
+    fn test_builtin_comparison() {
+        let mut interp = Interpreter::new();
+
+        // Builtins can be compared (by name)
+        interp.eval("f1 = len").unwrap();
+        interp.eval("f2 = len").unwrap();
+
+        assert_eq!(interp.eval("f1 == f2").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("f1 != f2").unwrap().to_string(), "0");
+        assert_eq!(interp.eval("len == sum").unwrap().to_string(), "0");
+        assert_eq!(interp.eval("len != sum").unwrap().to_string(), "1");
     }
 
     #[test]

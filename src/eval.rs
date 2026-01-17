@@ -62,21 +62,33 @@ impl PartialEq for Value {
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Tuple(a), Value::Tuple(b)) => a == b,
             (Value::Set(a), Value::Set(b)) => {
-                // Sets must be compared order-independently
+                // Sets must be compared order-independently and handle duplicates.
+                // Value::Set is backed by Vec which can contain duplicates due to
+                // imperfect deduplication (e.g., set([1, 1.0]) may have duplicates).
                 if a.len() != b.len() {
                     return false;
                 }
-                // O(n^2) but correct for order-independent set equality
-                a.iter().all(|item_a| b.iter().any(|item_b| item_a == item_b))
+                // O(n^2) multiset comparison: match each element and remove from copy
+                let mut b_items = b.clone();
+                for item_a in a {
+                    if let Some(pos) = b_items.iter().position(|item_b| item_a == item_b) {
+                        b_items.remove(pos);
+                    } else {
+                        return false;
+                    }
+                }
+                true
             }
             (Value::Dict(a), Value::Dict(b)) => a == b,
 
-            // Functions/lambdas: always false (no identity tracking)
-            // Matches Python behavior where functions are compared by identity
-            (Value::Lambda { .. }, Value::Lambda { .. }) => false,
-            (Value::Builtin { .. }, Value::Builtin { .. }) => false,
-            (Value::BuiltinValue { .. }, Value::BuiltinValue { .. }) => false,
-            (Value::BoundMethod { .. }, Value::BoundMethod { .. }) => false,
+            // Builtins and methods: compare by name (stable identifiers)
+            (Value::Builtin { name: a, .. }, Value::Builtin { name: b, .. }) => a == b,
+            (Value::BuiltinValue { name: a, .. }, Value::BuiltinValue { name: b, .. }) => a == b,
+
+            // Lambda comparisons should be caught in eval_expr before reaching here
+            (Value::Lambda { .. }, _) | (_, Value::Lambda { .. }) => {
+                unreachable!("Lambda comparison should be caught in eval_expr")
+            }
 
             // Different types are never equal
             _ => false,
@@ -840,8 +852,21 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
                     }
                     _ => return Err(EvalError::TypeError),
                 },
-                BinOp::Eq => Value::Number(if lval == rval { 1.0 } else { 0.0 }),
-                BinOp::Ne => Value::Number(if lval != rval { 1.0 } else { 0.0 }),
+                BinOp::Eq | BinOp::Ne => {
+                    // Lambda comparisons require identity tracking (f==f should be True).
+                    // Without Rc wrappers, we can't distinguish same vs different lambdas.
+                    // TypeError is safer than silently returning wrong results.
+                    if matches!(lval, Value::Lambda { .. }) || matches!(rval, Value::Lambda { .. }) {
+                        return Err(EvalError::TypeError);
+                    }
+
+                    let result = if op == BinOp::Eq {
+                        lval == rval
+                    } else {
+                        lval != rval
+                    };
+                    Value::Number(if result { 1.0 } else { 0.0 })
+                }
                 BinOp::And | BinOp::Or => {
                     unreachable!("And/Or handled above with short-circuit evaluation")
                 }
