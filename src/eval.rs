@@ -59,15 +59,11 @@ fn multiset_equal(a: &[Value], b: &[Value]) -> bool {
     }
     // Use boolean flags to track matched elements (avoids cloning Values)
     let mut b_matched = vec![false; b.len()];
-    'outer: for item_a in a {
-        for (i, item_b) in b.iter().enumerate() {
-            if !b_matched[i] && item_a == item_b {
-                b_matched[i] = true;
-                continue 'outer;
-            }
+    for item_a in a {
+        match b.iter().enumerate().find(|(i, item_b)| !b_matched[*i] && item_a == *item_b) {
+            Some((i, _)) => b_matched[i] = true,
+            None => return false,
         }
-        // No match found for item_a
-        return false;
     }
     true
 }
@@ -93,10 +89,14 @@ impl PartialEq for Value {
             // Builtins and methods: compare by name (stable identifiers)
             (Value::Builtin { name: a, .. }, Value::Builtin { name: b, .. }) => a == b,
             (Value::BuiltinValue { name: a, .. }, Value::BuiltinValue { name: b, .. }) => a == b,
+            (Value::BoundMethod { receiver: a_rec, method: a_meth },
+             Value::BoundMethod { receiver: b_rec, method: b_meth }) => {
+                a_meth == b_meth && a_rec == b_rec
+            }
 
-            // Lambda comparisons should be caught in eval_expr before reaching here
+            // Lambda comparisons require identity tracking - not implemented
             (Value::Lambda { .. }, _) | (_, Value::Lambda { .. }) => {
-                unreachable!("Lambda comparison should be caught in eval_expr")
+                unimplemented!("Lambda equality requires identity tracking (Rc + ptr_eq)")
             }
 
             // Different types are never equal
@@ -337,32 +337,43 @@ fn builtin_set_value(args: &[Value]) -> Result<Value, EvalError> {
         1 => {
             match &args[0] {
                 Value::List(lst) => {
-                    // 重複排除するか、ここでは単にVecに詰める程度
-                    let mut v = lst.clone();
-                    // 簡易的にユニーク化
-                    v.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
-                    v.dedup_by(|a, b| a.to_string() == b.to_string());
+                    // Deduplicate using actual equality, not string representation
+                    let mut v = Vec::new();
+                    for item in lst {
+                        if !v.iter().any(|existing| existing == item) {
+                            v.push(item.clone());
+                        }
+                    }
                     Ok(Value::Set(v))
                 }
                 Value::Tuple(tup) => {
-                    let mut v = tup.clone();
-                    v.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
-                    v.dedup_by(|a, b| a.to_string() == b.to_string());
+                    let mut v = Vec::new();
+                    for item in tup {
+                        if !v.iter().any(|existing| existing == item) {
+                            v.push(item.clone());
+                        }
+                    }
                     Ok(Value::Set(v))
                 }
                 Value::StringLit(s) => {
-                    // 文字ごとに
-                    let mut chars: Vec<Value> =
-                        s.chars().map(|c| Value::StringLit(c.to_string())).collect();
-                    chars.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
-                    chars.dedup_by(|a, b| a.to_string() == b.to_string());
-                    Ok(Value::Set(chars))
+                    let mut v = Vec::new();
+                    for c in s.chars() {
+                        let char_val = Value::StringLit(c.to_string());
+                        if !v.iter().any(|existing| existing == &char_val) {
+                            v.push(char_val);
+                        }
+                    }
+                    Ok(Value::Set(v))
                 }
                 // Dict ならキーをセット化 etc... 必要に応じて
                 Value::Dict(d) => {
-                    let mut v: Vec<Value> = d.keys().map(|k| Value::StringLit(k.clone())).collect();
-                    v.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
-                    v.dedup_by(|a, b| a.to_string() == b.to_string());
+                    let mut v = Vec::new();
+                    for k in d.keys() {
+                        let key_val = Value::StringLit(k.clone());
+                        if !v.iter().any(|existing| existing == &key_val) {
+                            v.push(key_val);
+                        }
+                    }
                     Ok(Value::Set(v))
                 }
                 _ => Err(EvalError::TypeError),
