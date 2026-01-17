@@ -859,7 +859,6 @@ mod test {
         // Reverse comparison should also work
         assert_eq!(interp.eval("'a' == keys[0]").unwrap().to_string(), "1");
     }
-}
 
     #[test]
     fn test_lambda_equality_behavior() {
@@ -888,3 +887,4 @@ mod test {
             "0"
         );
     }
+}
