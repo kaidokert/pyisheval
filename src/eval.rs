@@ -60,9 +60,10 @@ fn multiset_equal(a: &[Value], b: &[Value]) -> bool {
     // Use boolean flags to track matched elements (avoids cloning Values)
     let mut b_matched = vec![false; b.len()];
     for item_a in a {
-        match b.iter().enumerate().find(|(i, item_b)| !b_matched[*i] && item_a == *item_b) {
-            Some((i, _)) => b_matched[i] = true,
-            None => return false,
+        if let Some(pos) = b.iter().enumerate().position(|(i, item_b)| !b_matched[i] && item_a == item_b) {
+            b_matched[pos] = true;
+        } else {
+            return false;
         }
     }
     true
