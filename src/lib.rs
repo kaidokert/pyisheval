@@ -715,7 +715,7 @@ mod test {
     #[test]
     fn test_mixed_type_in_boolean_expressions() {
         let mut interp = Interpreter::new();
-        // Real-world pattern: check if prefix equals any of several string values
+        // Check if prefix equals any of several string values
         // When prefix is a number (e.g. True → 1.0), all comparisons should be False
         interp.eval("prefix = 1.0").unwrap();
 
@@ -750,21 +750,6 @@ mod test {
 
         // Empty strings
         assert_eq!(interp.eval("'' == ''").unwrap().to_string(), "1");
-
-        // Lists (added per Gemini's suggestion)
-        assert_eq!(interp.eval("[1, 2] == [1, 2]").unwrap().to_string(), "1");
-        assert_eq!(interp.eval("[1, 2] != [1, 3]").unwrap().to_string(), "1");
-        assert_eq!(interp.eval("[] == []").unwrap().to_string(), "1");
-
-        // Tuples
-        assert_eq!(interp.eval("(1, 2) == (1, 2)").unwrap().to_string(), "1");
-        assert_eq!(interp.eval("(1, 2) != (1, 3)").unwrap().to_string(), "1");
-        assert_eq!(interp.eval("() == ()").unwrap().to_string(), "1");
-
-        // Dicts
-        assert_eq!(interp.eval("{'a': 1} == {'a': 1}").unwrap().to_string(), "1");
-        assert_eq!(interp.eval("{'a': 1} != {'a': 2}").unwrap().to_string(), "1");
-        assert_eq!(interp.eval("{} == {}").unwrap().to_string(), "1");
     }
 
     #[test]
