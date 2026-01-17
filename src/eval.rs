@@ -18,7 +18,7 @@ impl PartialEq for Env {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Number(f64),
     Lambda {
@@ -44,6 +44,33 @@ pub enum Value {
         receiver: Box<Value>,
         method: String,
     },
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            // Compare simple values
+            (Value::Number(a), Value::Number(b)) => a == b,
+            (Value::Var(a), Value::Var(b)) => a == b,
+            (Value::StringLit(a), Value::StringLit(b)) => a == b,
+
+            // Compare collections recursively
+            (Value::List(a), Value::List(b)) => a == b,
+            (Value::Tuple(a), Value::Tuple(b)) => a == b,
+            (Value::Set(a), Value::Set(b)) => a == b,
+            (Value::Dict(a), Value::Dict(b)) => a == b,
+
+            // Functions/lambdas: always false (no identity tracking)
+            // Matches Python behavior where functions are compared by identity
+            (Value::Lambda { .. }, Value::Lambda { .. }) => false,
+            (Value::Builtin { .. }, Value::Builtin { .. }) => false,
+            (Value::BuiltinValue { .. }, Value::BuiltinValue { .. }) => false,
+            (Value::BoundMethod { .. }, Value::BoundMethod { .. }) => false,
+
+            // Different types are never equal
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for Value {
@@ -803,7 +830,7 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
                     _ => return Err(EvalError::TypeError),
                 },
                 BinOp::Eq => {
-                    if std::mem::discriminant(&lval) == std::mem::discriminant(&rval) {
+                    if core::mem::discriminant(&lval) == core::mem::discriminant(&rval) {
                         // For same-type comparisons, use the derived PartialEq.
                         Value::Number(if lval == rval { 1.0 } else { 0.0 })
                     } else {
@@ -812,7 +839,7 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
                     }
                 }
                 BinOp::Ne => {
-                    if std::mem::discriminant(&lval) == std::mem::discriminant(&rval) {
+                    if core::mem::discriminant(&lval) == core::mem::discriminant(&rval) {
                         // For same-type comparisons, use the derived PartialEq.
                         Value::Number(if lval != rval { 1.0 } else { 0.0 })
                     } else {

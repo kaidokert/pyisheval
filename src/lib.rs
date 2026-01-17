@@ -775,4 +775,26 @@ mod test {
         assert_eq!(interp.eval("[1, 2] == 5").unwrap().to_string(), "0");
         assert_eq!(interp.eval("[1, 2] != 5").unwrap().to_string(), "1");
     }
+
+    #[test]
+    fn test_lambda_comparison() {
+        let mut interp = Interpreter::new();
+
+        // TODO: Lambdas always compare as False (limitation: no object identity tracking)
+        interp.eval("f1 = lambda x: 1").unwrap();
+        interp.eval("f2 = lambda x: 1").unwrap();
+
+        // pyisheval: f1 == f2 returns False (correct - different lambdas)
+        let result = interp.eval("f1 == f2").unwrap();
+        assert_eq!(result.to_string(), "0");
+
+        // TODO: f1 == f1 also returns False, Python would return True ( object identity )
+        let result2 = interp.eval("f1 == f1").unwrap();
+        assert_eq!(result2.to_string(), "0");
+
+        // Assignment: f2 = f1 still results in False for comparison
+        interp.eval("f2 = f1").unwrap();
+        let result3 = interp.eval("f2 == f1").unwrap();
+        assert_eq!(result3.to_string(), "0");
+    }
 }
