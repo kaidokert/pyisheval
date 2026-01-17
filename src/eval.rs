@@ -94,10 +94,10 @@ impl PartialEq for Value {
                 a_meth == b_meth && a_rec == b_rec
             }
 
-            // Lambda comparisons require identity tracking - not implemented
-            (Value::Lambda { .. }, _) | (_, Value::Lambda { .. }) => {
-                unimplemented!("Lambda equality requires identity tracking (Rc + ptr_eq)")
-            }
+            // Lambda comparisons always return false (no identity tracking)
+            // Direct lambda == lambda throws TypeError in eval_expr, so this only
+            // affects lambdas inside collections (e.g., [lambda x: 1] == [lambda x: 2])
+            (Value::Lambda { .. }, _) | (_, Value::Lambda { .. }) => false,
 
             // Different types are never equal
             _ => false,

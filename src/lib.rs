@@ -862,9 +862,29 @@ mod test {
 }
 
     #[test]
-    #[should_panic(expected = "not implemented")]
-    fn test_nested_lambda_hits_unimplemented() {
+    fn test_lambda_equality_behavior() {
         let mut interp = Interpreter::new();
-        // Nested lambda comparison hits unimplemented!() in PartialEq
-        let _ = interp.eval("[lambda x: 1] == [lambda x: 1]");
+
+        // Direct lambda == lambda still throws TypeError (caught in eval_expr)
+        let result = interp.eval("(lambda x: 1) == (lambda x: 1)");
+        assert!(matches!(result, Err(EvalError::TypeError)));
+
+        // TODO: Lambdas in collections always compare as false (trade-off, would require object id tracking)
+        // Even though these are syntactically identical, we can't track identity
+        assert_eq!(
+            interp.eval("[lambda x: 1] == [lambda x: 1]").unwrap().to_string(),
+            "0"
+        );
+
+        // Different lambdas in collections also return false
+        assert_eq!(
+            interp.eval("[lambda x: 1] == [lambda x: 2]").unwrap().to_string(),
+            "0"
+        );
+
+        // Lists with mixed content: lambdas make them unequal
+        assert_eq!(
+            interp.eval("['a', lambda x: 1] == ['a', lambda x: 1]").unwrap().to_string(),
+            "0"
+        );
     }
