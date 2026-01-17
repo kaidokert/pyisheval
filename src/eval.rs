@@ -856,21 +856,15 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
                     }
                     _ => return Err(EvalError::TypeError),
                 },
-                BinOp::Eq => {
+                BinOp::Eq | BinOp::Ne => {
                     // Direct lambda comparisons throw TypeError
                     if matches!(lval, Value::Lambda { .. }) || matches!(rval, Value::Lambda { .. }) {
                         return Err(EvalError::TypeError);
                     }
                     // Use PartialEq for all other comparisons (including mixed types)
-                    Value::Number(if lval == rval { 1.0 } else { 0.0 })
-                }
-                BinOp::Ne => {
-                    // Direct lambda comparisons throw TypeError
-                    if matches!(lval, Value::Lambda { .. }) || matches!(rval, Value::Lambda { .. }) {
-                        return Err(EvalError::TypeError);
-                    }
-                    // Use PartialEq for all other comparisons (including mixed types)
-                    Value::Number(if lval != rval { 1.0 } else { 0.0 })
+                    let are_equal = lval == rval;
+                    let result = if op == BinOp::Eq { are_equal } else { !are_equal };
+                    Value::Number(if result { 1.0 } else { 0.0 })
                 }
                 BinOp::And | BinOp::Or => {
                     unreachable!("And/Or handled above with short-circuit evaluation")
