@@ -54,6 +54,10 @@ impl PartialEq for Value {
             (Value::Var(a), Value::Var(b)) => a == b,
             (Value::StringLit(a), Value::StringLit(b)) => a == b,
 
+            // Cross-type string comparisons (Var and StringLit are semantically equivalent)
+            (Value::Var(a), Value::StringLit(b)) => a == b,
+            (Value::StringLit(a), Value::Var(b)) => a == b,
+
             // Compare collections recursively
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Tuple(a), Value::Tuple(b)) => a == b,

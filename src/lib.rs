@@ -804,4 +804,23 @@ mod test {
         let result3 = interp.eval("f2 == f1").unwrap();
         assert_eq!(result3.to_string(), "0");
     }
+
+    #[test]
+    fn test_var_stringlit_cross_type_equality() {
+        let mut interp = Interpreter::new();
+
+        // Dict iteration creates Var values, not StringLit
+        interp.eval("d = {'a': 1, 'b': 2}").unwrap();
+        interp.eval("keys = [k for k in d]").unwrap();
+
+        // Var and StringLit should compare as equal when content matches
+        assert_eq!(interp.eval("keys[0] == 'a'").unwrap().to_string(), "1");
+        assert_eq!(interp.eval("keys[1] == 'b'").unwrap().to_string(), "1");
+
+        // List of Var should equal list of StringLit
+        assert_eq!(interp.eval("keys == ['a', 'b']").unwrap().to_string(), "1");
+
+        // Reverse comparison should also work
+        assert_eq!(interp.eval("'a' == keys[0]").unwrap().to_string(), "1");
+    }
 }
