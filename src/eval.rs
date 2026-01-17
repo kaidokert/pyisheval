@@ -802,24 +802,24 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
                     }
                     _ => return Err(EvalError::TypeError),
                 },
-                BinOp::Eq => match (lval, rval) {
-                    (Value::Number(a), Value::Number(b)) => {
-                        Value::Number(if a == b { 1.0 } else { 0.0 })
+                BinOp::Eq => {
+                    if std::mem::discriminant(&lval) == std::mem::discriminant(&rval) {
+                        // For same-type comparisons, use the derived PartialEq.
+                        Value::Number(if lval == rval { 1.0 } else { 0.0 })
+                    } else {
+                        // Mixed-type comparisons are always false.
+                        Value::Number(0.0)
                     }
-                    (Value::StringLit(a), Value::StringLit(b)) => {
-                        Value::Number(if a == b { 1.0 } else { 0.0 })
+                }
+                BinOp::Ne => {
+                    if std::mem::discriminant(&lval) == std::mem::discriminant(&rval) {
+                        // For same-type comparisons, use the derived PartialEq.
+                        Value::Number(if lval != rval { 1.0 } else { 0.0 })
+                    } else {
+                        // Mixed-type comparisons are always true.
+                        Value::Number(1.0)
                     }
-                    _ => return Err(EvalError::TypeError),
-                },
-                BinOp::Ne => match (lval, rval) {
-                    (Value::Number(a), Value::Number(b)) => {
-                        Value::Number(if a != b { 1.0 } else { 0.0 })
-                    }
-                    (Value::StringLit(a), Value::StringLit(b)) => {
-                        Value::Number(if a != b { 1.0 } else { 0.0 })
-                    }
-                    _ => return Err(EvalError::TypeError),
-                },
+                }
                 BinOp::And | BinOp::Or => {
                     unreachable!("And/Or handled above with short-circuit evaluation")
                 }
