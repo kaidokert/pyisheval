@@ -351,20 +351,16 @@ fn builtin_set_value(args: &[Value]) -> Result<Value, EvalError> {
                     Ok(Value::Set(v))
                 }
                 Value::StringLit(s) => {
-                    let mut v = Vec::new();
-                    for c in s.chars() {
-                        v.push(Value::StringLit(c.to_string()));
-                    }
-                    v.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
-                    v.dedup_by(|a, b| a.to_string() == b.to_string());
-                    Ok(Value::Set(v))
+                    // 文字ごとに
+                    let mut chars: Vec<Value> =
+                        s.chars().map(|c| Value::StringLit(c.to_string())).collect();
+                    chars.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+                    chars.dedup_by(|a, b| a.to_string() == b.to_string());
+                    Ok(Value::Set(chars))
                 }
                 // Dict ならキーをセット化 etc... 必要に応じて
                 Value::Dict(d) => {
-                    let mut v = Vec::new();
-                    for k in d.keys() {
-                        v.push(Value::StringLit(k.clone()));
-                    }
+                    let mut v: Vec<Value> = d.keys().map(|k| Value::StringLit(k.clone())).collect();
                     v.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
                     v.dedup_by(|a, b| a.to_string() == b.to_string());
                     Ok(Value::Set(v))
@@ -865,21 +861,24 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
                     }
                     _ => return Err(EvalError::TypeError),
                 },
-                BinOp::Eq | BinOp::Ne => {
-                    // Lambda comparisons require identity tracking (f==f should be True).
-                    // Without Rc wrappers, we can't distinguish same vs different lambdas.
-                    // TypeError is safer than silently returning wrong results.
-                    if matches!(lval, Value::Lambda { .. }) || matches!(rval, Value::Lambda { .. }) {
-                        return Err(EvalError::TypeError);
+                BinOp::Eq => match (lval, rval) {
+                    (Value::Number(a), Value::Number(b)) => {
+                        Value::Number(if a == b { 1.0 } else { 0.0 })
                     }
-
-                    let result = if op == BinOp::Eq {
-                        lval == rval
-                    } else {
-                        lval != rval
-                    };
-                    Value::Number(if result { 1.0 } else { 0.0 })
+                    (Value::StringLit(a), Value::StringLit(b)) => {
+                        Value::Number(if a == b { 1.0 } else { 0.0 })
+                    }
+                    _ => return Err(EvalError::TypeError),
+                },
+                BinOp::Ne => match (lval, rval) {
+                    (Value::Number(a), Value::Number(b)) => {
+                        Value::Number(if a != b { 1.0 } else { 0.0 })
+                    }
+                    (Value::StringLit(a), Value::StringLit(b)) => {
+                        Value::Number(if a != b { 1.0 } else { 0.0 })
                 }
+                    _ => return Err(EvalError::TypeError),
+                },
                 BinOp::And | BinOp::Or => {
                     unreachable!("And/Or handled above with short-circuit evaluation")
                 }
