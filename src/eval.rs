@@ -101,6 +101,15 @@ impl PartialEq for Value {
     }
 }
 
+/// Escape a string for Python repr-style output
+fn escape_python_string(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('\'', "\\'")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
+}
+
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -127,12 +136,15 @@ impl std::fmt::Display for Value {
             Value::Dict(m) => {
                 let mut pairs = vec![];
                 for (k, val) in m.iter() {
-                    pairs.push(format!("{}: {}", k, val));
+                    // Dict keys are always strings in pyisheval - always quote them
+                    let quoted_key = format!("'{}'", escape_python_string(k));
+                    pairs.push(format!("{}: {}", quoted_key, val));
                 }
                 write!(f, "{{{}}}", pairs.join(", "))
             }
             Value::Var(v) => write!(f, "{}", v),
-            Value::StringLit(s) => write!(f, "{}", s),
+            // StringLit outputs quoted, escaped strings for valid Python syntax
+            Value::StringLit(s) => write!(f, "'{}'", escape_python_string(s)),
             Value::BoundMethod {
                 receiver: _,
                 method,
