@@ -102,12 +102,20 @@ impl PartialEq for Value {
 }
 
 /// Escape a string for Python repr-style output
+/// Single-pass iteration to avoid intermediate allocations
 fn escape_python_string(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace('\'', "\\'")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\t', "\\t")
+    let mut escaped = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '\\' => escaped.push_str("\\\\"),
+            '\'' => escaped.push_str("\\'"),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            _ => escaped.push(c),
+        }
+    }
+    escaped
 }
 
 impl std::fmt::Display for Value {
@@ -136,7 +144,9 @@ impl std::fmt::Display for Value {
             Value::Dict(m) => {
                 let mut pairs = vec![];
                 for (k, val) in m.iter() {
-                    // Dict keys are always strings in pyisheval - always quote them
+                    // IMPORTANT: Always quote dict keys (even numeric-looking ones like "1", "2.5")
+                    // This ensures round-trip serialization works: parse → to_string() → parse
+                    // pyisheval only supports string keys, so unquoted numeric keys would fail to reparse
                     let quoted_key = format!("'{}'", escape_python_string(k));
                     pairs.push(format!("{}: {}", quoted_key, val));
                 }
