@@ -101,6 +101,23 @@ impl PartialEq for Value {
     }
 }
 
+/// Escape a string for Python repr-style output
+/// Single-pass iteration to avoid intermediate allocations
+fn escape_python_string(s: &str) -> String {
+    let mut escaped = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '\\' => escaped.push_str("\\\\"),
+            '\'' => escaped.push_str("\\'"),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            _ => escaped.push(c),
+        }
+    }
+    escaped
+}
+
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -127,12 +144,17 @@ impl std::fmt::Display for Value {
             Value::Dict(m) => {
                 let mut pairs = vec![];
                 for (k, val) in m.iter() {
-                    pairs.push(format!("{}: {}", k, val));
+                    // IMPORTANT: Always quote dict keys (even numeric-looking ones like "1", "2.5")
+                    // This ensures round-trip serialization works: parse → to_string() → parse
+                    // pyisheval only supports string keys, so unquoted numeric keys would fail to reparse
+                    let quoted_key = format!("'{}'", escape_python_string(k));
+                    pairs.push(format!("{}: {}", quoted_key, val));
                 }
                 write!(f, "{{{}}}", pairs.join(", "))
             }
             Value::Var(v) => write!(f, "{}", v),
-            Value::StringLit(s) => write!(f, "{}", s),
+            // StringLit outputs quoted, escaped strings for valid Python syntax
+            Value::StringLit(s) => write!(f, "'{}'", escape_python_string(s)),
             Value::BoundMethod {
                 receiver: _,
                 method,
