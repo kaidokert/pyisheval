@@ -101,21 +101,22 @@ impl PartialEq for Value {
     }
 }
 
-/// Escape a string for Python repr-style output
-/// Single-pass iteration to avoid intermediate allocations
-fn escape_python_string(s: &str) -> String {
-    let mut escaped = String::with_capacity(s.len());
+/// Write an escaped string directly to a formatter for Python repr-style output
+/// Handles all control characters using char::is_control() for robust round-trip serialization
+fn write_escaped_string(f: &mut std::fmt::Formatter<'_>, s: &str) -> std::fmt::Result {
     for c in s.chars() {
         match c {
-            '\\' => escaped.push_str("\\\\"),
-            '\'' => escaped.push_str("\\'"),
-            '\n' => escaped.push_str("\\n"),
-            '\r' => escaped.push_str("\\r"),
-            '\t' => escaped.push_str("\\t"),
-            _ => escaped.push(c),
+            '\\' => write!(f, "\\\\")?,
+            '\'' => write!(f, "\\'")?,
+            c if c.is_control() => {
+                for escaped_char in c.escape_default() {
+                    write!(f, "{}", escaped_char)?;
+                }
+            }
+            _ => write!(f, "{}", c)?,
         }
     }
-    escaped
+    Ok(())
 }
 
 impl std::fmt::Display for Value {
@@ -142,19 +143,29 @@ impl std::fmt::Display for Value {
                 write!(f, "{{{}}}", strs.join(", "))
             }
             Value::Dict(m) => {
-                let mut pairs = vec![];
+                write!(f, "{{")?;
+                let mut first = true;
                 for (k, val) in m.iter() {
                     // IMPORTANT: Always quote dict keys (even numeric-looking ones like "1", "2.5")
                     // This ensures round-trip serialization works: parse → to_string() → parse
                     // pyisheval only supports string keys, so unquoted numeric keys would fail to reparse
-                    let quoted_key = format!("'{}'", escape_python_string(k));
-                    pairs.push(format!("{}: {}", quoted_key, val));
+                    if !first {
+                        write!(f, ", ")?;
+                    }
+                    first = false;
+                    write!(f, "'")?;
+                    write_escaped_string(f, k)?;
+                    write!(f, "': {}", val)?;
                 }
-                write!(f, "{{{}}}", pairs.join(", "))
+                write!(f, "}}")
             }
             Value::Var(v) => write!(f, "{}", v),
             // StringLit outputs quoted, escaped strings for valid Python syntax
-            Value::StringLit(s) => write!(f, "'{}'", escape_python_string(s)),
+            Value::StringLit(s) => {
+                write!(f, "'")?;
+                write_escaped_string(f, s)?;
+                write!(f, "'")
+            }
             Value::BoundMethod {
                 receiver: _,
                 method,
