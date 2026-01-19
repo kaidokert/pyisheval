@@ -962,6 +962,109 @@ mod test {
     }
 
     #[test]
+    fn test_str_on_string_literal() {
+        use crate::Value;
+        let mut interp = Interpreter::new();
+        // str() should extract raw value without Display's quotes
+        let result = interp.eval("str('36_11')").unwrap();
+        if let Value::StringLit(s) = result {
+            assert_eq!(s, "36_11"); // Underlying value has no extra quotes
+        } else {
+            panic!("Expected StringLit");
+        }
+    }
+
+    #[test]
+    fn test_str_on_variable() {
+        use crate::Value;
+        let mut interp = Interpreter::new();
+        interp.eval("x = 'hello'").unwrap();
+        let result = interp.eval("str(x)").unwrap();
+        if let Value::StringLit(s) = result {
+            assert_eq!(s, "hello");
+        } else {
+            panic!("Expected StringLit");
+        }
+    }
+
+    #[test]
+    fn test_str_on_number() {
+        use crate::Value;
+        let mut interp = Interpreter::new();
+        let result = interp.eval("str(42.5)").unwrap();
+        if let Value::StringLit(s) = result {
+            assert_eq!(s, "42.5");
+        } else {
+            panic!("Expected StringLit");
+        }
+    }
+
+    #[test]
+    fn test_str_on_list() {
+        use crate::Value;
+        let mut interp = Interpreter::new();
+        let result = interp.eval("str([1, 2, 3])").unwrap();
+        if let Value::StringLit(s) = result {
+            // List's Display output includes quotes for string elements
+            assert_eq!(s, "[1, 2, 3]");
+        } else {
+            panic!("Expected StringLit");
+        }
+    }
+
+    #[test]
+    fn test_str_on_dict() {
+        use crate::Value;
+        let mut interp = Interpreter::new();
+        let result = interp.eval("str({'a': 1})").unwrap();
+        if let Value::StringLit(s) = result {
+            // Dict's Display output includes quoted keys
+            assert_eq!(s, "{'a': 1}");
+        } else {
+            panic!("Expected StringLit");
+        }
+    }
+
+    #[test]
+    fn test_str_empty() {
+        use crate::Value;
+        let mut interp = Interpreter::new();
+        let result = interp.eval("str()").unwrap();
+        if let Value::StringLit(s) = result {
+            assert_eq!(s, "");
+        } else {
+            panic!("Expected StringLit");
+        }
+    }
+
+    #[test]
+    fn test_str_in_expression() {
+        use crate::Value;
+        let mut interp = Interpreter::new();
+        interp.eval("family = '36_11'").unwrap();
+
+        // str() should not add extra quotes that would interfere with string operations
+        // (The xacro use case - str() should produce clean values for further processing)
+        let result = interp.eval("str(family)").unwrap();
+        assert_eq!(result, Value::StringLit("36_11".to_string()));
+    }
+
+    #[test]
+    fn test_str_with_replace_method() {
+        use crate::Value;
+        let mut interp = Interpreter::new();
+        interp.eval("family = '36_11'").unwrap();
+
+        // The xacro use case: str(value).replace()
+        let result = interp.eval("str(family).replace('_', '-')").unwrap();
+        if let Value::StringLit(s) = result {
+            assert_eq!(s, "36-11");  // Should work without quote pollution
+        } else {
+            panic!("Expected StringLit");
+        }
+    }
+
+    #[test]
     fn test_lambda_equality_behavior() {
         let mut interp = Interpreter::new();
 

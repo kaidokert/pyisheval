@@ -432,15 +432,24 @@ fn builtin_zip_value(args: &[Value]) -> Result<Value, EvalError> {
     Ok(Value::List(result))
 }
 
-/// str(obj) -> obj を文字列に変換 (簡易実装)
-/// - 0引数なら空文字列
-/// - 1引数なら to_string()
+/// str(obj) -> Convert object to string
+/// Python's str() extracts the underlying value without repr-style quotes
+/// - 0 args: empty string
+/// - 1 arg: convert to string (StringLit/Var → raw value, others → formatted)
 fn builtin_str_value(args: &[Value]) -> Result<Value, EvalError> {
     match args.len() {
         0 => Ok(Value::StringLit("".to_string())),
         1 => {
-            // "obj" を to_string() で雑に文字列化
-            Ok(Value::StringLit(args[0].to_string()))
+            // For StringLit and Var, extract the underlying string without quotes
+            // For other types, use to_string() for formatted representation
+            let result = match &args[0] {
+                Value::StringLit(s) => s.clone(),
+                Value::Var(v) => v.clone(),
+                // For other types, to_string() gives appropriate representation
+                // (e.g., lists → "[1, 2, 3]", dicts → "{'a': 1}", etc.)
+                other => other.to_string(),
+            };
+            Ok(Value::StringLit(result))
         }
         _ => Err(EvalError::ArgError("str".to_string())),
     }
