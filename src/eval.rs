@@ -938,13 +938,10 @@ pub fn eval_expr(expr: Expr, env: Rc<RefCell<Env>>) -> Result<(Value, Rc<RefCell
                     let result = if op == BinOp::Eq { are_equal } else { !are_equal };
                     Value::Number(if result { 1.0 } else { 0.0 })
                 }
-                BinOp::In => {
+                BinOp::In | BinOp::NotIn => {
                     let is_member = check_membership(&lval, &rval)?;
-                    Value::Number(if is_member { 1.0 } else { 0.0 })
-                }
-                BinOp::NotIn => {
-                    let is_member = check_membership(&lval, &rval)?;
-                    Value::Number(if !is_member { 1.0 } else { 0.0 })
+                    let result = if op == BinOp::In { is_member } else { !is_member };
+                    Value::Number(if result { 1.0 } else { 0.0 })
                 }
                 BinOp::And | BinOp::Or => {
                     unreachable!("And/Or handled above with short-circuit evaluation")

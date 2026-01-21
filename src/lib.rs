@@ -1121,6 +1121,7 @@ mod test {
         assert_eq!(interp.eval("2 in [1, 2, 3]").unwrap(), Value::Number(1.0));
         assert_eq!(interp.eval("4 in [1, 2, 3]").unwrap(), Value::Number(0.0));
         assert_eq!(interp.eval("'a' in ['a', 'b']").unwrap(), Value::Number(1.0));
+        assert_eq!(interp.eval("1 in []").unwrap(), Value::Number(0.0));
     }
 
     #[test]
@@ -1128,6 +1129,7 @@ mod test {
         let mut interp = Interpreter::new();
         assert_eq!(interp.eval("2 in (1, 2, 3)").unwrap(), Value::Number(1.0));
         assert_eq!(interp.eval("4 in (1, 2, 3)").unwrap(), Value::Number(0.0));
+        assert_eq!(interp.eval("1 in ()").unwrap(), Value::Number(0.0));
     }
 
     #[test]
@@ -1144,6 +1146,7 @@ mod test {
         assert_eq!(interp.eval("'c' in {'a': 1, 'b': 2}").unwrap(), Value::Number(0.0));
         // Values are NOT checked, only keys
         assert_eq!(interp.eval("1 in {'a': 1}").unwrap(), Value::Number(0.0));
+        assert_eq!(interp.eval("'a' in {}").unwrap(), Value::Number(0.0));
     }
 
     #[test]
