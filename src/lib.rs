@@ -1147,6 +1147,9 @@ mod test {
         // Values are NOT checked, only keys
         assert_eq!(interp.eval("1 in {'a': 1}").unwrap(), Value::Number(0.0));
         assert_eq!(interp.eval("'a' in {}").unwrap(), Value::Number(0.0));
+        // Number keys are converted to strings (consistent with extract_key for indexing)
+        assert_eq!(interp.eval("2 in {'2': 'a'}").unwrap(), Value::Number(1.0));
+        assert_eq!(interp.eval("3 in {'2': 'a'}").unwrap(), Value::Number(0.0));
     }
 
     #[test]

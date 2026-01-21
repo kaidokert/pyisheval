@@ -792,11 +792,12 @@ fn check_membership(needle: &Value, haystack: &Value) -> Result<bool, EvalError>
             Ok(items.iter().any(|item| item == needle))
         }
 
-        // Dict: key presence (pyisheval only supports string keys, unlike Python which allows any hashable type)
+        // Dict: key presence (consistent with extract_key: converts numbers to strings)
         Value::Dict(map) => {
             match needle {
                 Value::StringLit(k) | Value::Var(k) => Ok(map.contains_key(k)),
-                // Non-string needles always return false (no numeric keys like Python's `2 in {1: 'a', 2: 'b'}`)
+                Value::Number(n) => Ok(map.contains_key(&n.to_string())),
+                // Other types cannot be dict keys
                 _ => Ok(false),
             }
         }
